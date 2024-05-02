@@ -1,0 +1,17 @@
+
+broker:
+  host: localhost
+  port: 6866
+  userauth:
+    user: USERNAME_HERE
+    password: SECRET_PASSWORD
+
+base_topic: ble2mqtt
+publish_backoff_seconds: 60
+scan_interval_seconds: 60
+
+devices:
+  my_device_1:
+    uuid: "AA:BB:CC:DD:EE:FF"
+  my_device_2:
+    uuid: "FF:EE:DD:CC:BB:AA"
