@@ -21,6 +21,11 @@ characteristics = {
         "name": "humidity",
         "friendly_name": "Humidity",
         "unit": "%",
+    },
+    "2A19": {
+        "name": "battery",
+        "friendly_name": "Battery",
+        "unit": "%",
     }
 }
 
