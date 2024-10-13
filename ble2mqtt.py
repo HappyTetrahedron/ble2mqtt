@@ -10,22 +10,26 @@ from optparse import OptionParser
 import datetime
 import traceback
 
-
+FORMAT_FLOAT4 = "float4"
+FORMAT_INT1 = "int1"
 characteristics = {
     "00002235-b38d-4985-720e-0f993a68ee41": {
         "name": "temperature",
         "friendly_name": "Temperature",
         "unit": "°C",
+        "format": FORMAT_FLOAT4,
     },
     "00001235-b38d-4985-720e-0f993a68ee41": {
         "name": "humidity",
         "friendly_name": "Humidity",
         "unit": "%",
+        "format": FORMAT_FLOAT4,
     },
     "00002a19-0000-1000-8000-00805f9b34fb": {
         "name": "battery",
         "friendly_name": "Battery",
         "unit": "%",
+        "format": FORMAT_INT1,
     }
 }
 
@@ -67,10 +71,10 @@ class Ble2Mqtt:
                     for uuid, cha in characteristics.items():
                         result = await client.read_gatt_char(uuid)
                         if self.config['debug']:
-                            print("{} {}: {} {}".format(name, cha["name"], convert(result), cha["unit"]))
+                            print("{} {}: {} {}".format(name, cha["name"], convert(cha["format"], result), cha["unit"]))
                         payload = {
                             "state": "connected",
-                            cha["name"]: convert(result),
+                            cha["name"]: convert(cha["format"], result),
                         }
                         self.send_mqtt(name, payload)
 
@@ -116,17 +120,6 @@ class Ble2Mqtt:
             self.mqtt_client.loop_stop()
 
 
-    def send_value(self, device: str, characteristic: BleakGATTCharacteristic, data: bytearray):
-        char = characteristics[characteristic.uuid]
-        if self.config['debug']:
-            print("{} {}: {} {}".format(device, char["name"], convert(data), char["unit"]))
-        payload = {
-            "state": "connected",
-            char["name"]: convert(data),
-        }
-        self.send_mqtt(device, payload)
-
-    
     def send_mqtt(self, device: str, state: dict):
         stored_state = self.device_states.get(device, {})
         new_state = {**stored_state}
@@ -151,8 +144,11 @@ class Ble2Mqtt:
         self.send_mqtt(device_name, payload)
 
 
-def convert(bytearray):
-    return struct.unpack('f', bytearray[0:4])[0]
+def convert(format, bytearray):
+    if format == FORMAT_FLOAT4:
+        return struct.unpack('f', bytearray[0:4])[0]
+    if format == FORMAT_INT1:
+        return int.from_bytes(bytearray)
 
 
 if __name__ == '__main__':
