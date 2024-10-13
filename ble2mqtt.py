@@ -63,17 +63,19 @@ class Ble2Mqtt:
             async with BleakClient(device, disconnected_callback=disconnect_cb) as client:
                 print("Connected {}.".format(name))
 
-                for uuid, cha in characteristics.items():
-                    print("Subscribing {}.".format(cha['friendly_name']))
-                    await client.start_notify(uuid, partial(self.send_value, name))
-                print("Subscribed {}.".format(name))
+                while not disconnect_event.is_set():
+                    for uuid, cha in characteristics.items():
+                        result = await client.read_gatt_char(uuid)
+                        if self.config['debug']:
+                            print("{} {}: {} {}".format(name, cha["name"], convert(result), cha["unit"]))
+                        payload = {
+                            "state": "connected",
+                            cha["name"]: convert(result),
+                        }
+                        self.send_mqtt(name, payload)
 
-                await disconnect_event.wait()
+                    await asyncio.sleep(self.config['read_interval_seconds'])
 
-                for uuid, cha in characteristics.items():
-                    print("Stopping {}.".format(cha['friendly_name']))
-                    await client.stop_notify(uuid)
-                print("Unsubscribed {}.".format(name))
         except Exception as e:
             print("Task {} ended with error:".format(name))
             print(traceback.format_exc())
@@ -135,7 +137,7 @@ class Ble2Mqtt:
             self.device_states[device] = new_state
             payload = {"last_update": datetime.datetime.now().isoformat()}
             payload.update(new_state)
-            print("Publishing: {}".format(new_state))
+            print("Publishing for {}: {}".format(device, new_state))
             payload_str = json.dumps(payload)
             self.mqtt_client.publish(topic, payload_str)
             self.publish_backoffs[topic] = datetime.datetime.now()
