@@ -22,7 +22,7 @@ characteristics = {
         "friendly_name": "Humidity",
         "unit": "%",
     },
-    "2A19": {
+    "00002a19-0000-1000-8000-00805f9b34fb": {
         "name": "battery",
         "friendly_name": "Battery",
         "unit": "%",
@@ -64,12 +64,14 @@ class Ble2Mqtt:
                 print("Connected {}.".format(name))
 
                 for uuid, cha in characteristics.items():
+                    print("Subscribing {}.".format(cha['friendly_name']))
                     await client.start_notify(uuid, partial(self.send_value, name))
                 print("Subscribed {}.".format(name))
 
                 await disconnect_event.wait()
 
                 for uuid, cha in characteristics.items():
+                    print("Stopping {}.".format(cha['friendly_name']))
                     await client.stop_notify(uuid)
                 print("Unsubscribed {}.".format(name))
         except Exception as e:
@@ -114,7 +116,8 @@ class Ble2Mqtt:
 
     def send_value(self, device: str, characteristic: BleakGATTCharacteristic, data: bytearray):
         char = characteristics[characteristic.uuid]
-        print("{} {}: {} {}".format(device, char["name"], convert(data), char["unit"]))
+        if self.config['debug']:
+            print("{} {}: {} {}".format(device, char["name"], convert(data), char["unit"]))
         payload = {
             "state": "connected",
             char["name"]: convert(data),
@@ -132,7 +135,7 @@ class Ble2Mqtt:
             self.device_states[device] = new_state
             payload = {"last_update": datetime.datetime.now().isoformat()}
             payload.update(new_state)
-            print("Publishing.")
+            print("Publishing: {}".format(new_state))
             payload_str = json.dumps(payload)
             self.mqtt_client.publish(topic, payload_str)
             self.publish_backoffs[topic] = datetime.datetime.now()
