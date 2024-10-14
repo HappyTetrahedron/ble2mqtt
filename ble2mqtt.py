@@ -62,7 +62,7 @@ class Ble2Mqtt:
             disconnect_cb = partial(self.on_disconnect, name)
             disconnect_event = asyncio.Event()
             self.tasks[name] = DeviceTask(disconnect_event)
-            async with BleakClient(device, disconnected_callback=disconnect_cb) as client:
+            async with BleakClient(device, disconnected_callback=disconnect_cb, timeout=self.config['discovery_timeout_seconds']) as client:
                 print("Connected {}.".format(name))
 
                 try:
@@ -79,7 +79,7 @@ class Ble2Mqtt:
                         self.send_mqtt(name, payload)
                         await asyncio.sleep(self.config['read_interval_seconds'])
                 finally:
-                    client.disconnect()
+                    await client.disconnect()
 
         except Exception as e:
             print("Task {} ended with error:".format(name))

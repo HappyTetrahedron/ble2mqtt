@@ -9,6 +9,7 @@ broker:
 base_topic: ble2mqtt
 scan_interval_seconds: 60
 read_interval_seconds: 60
+discovery_timeout_seconds: 10
 
 devices:
   my_device_1:
