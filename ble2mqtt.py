@@ -47,8 +47,6 @@ class Ble2Mqtt:
         self.devices_disconnected = []
         self.tasks = {}
         self.aio_tasks = []
-        self.publish_backoffs = {}
-        self.device_states = {}
         self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, 'ble2mqtt')
         if 'userauth' in self.config['broker']:
             self.mqtt_client.username_pw_set(
@@ -121,19 +119,13 @@ class Ble2Mqtt:
 
 
     def send_mqtt(self, device: str, state: dict):
-        stored_state = self.device_states.get(device, {})
-        new_state = {**stored_state}
-        new_state.update(state)
+        new_state = {**state}
         topic = "{}/{}".format(self.config['base_topic'], device)
-        if any((stored_state.get(k) != new_state.get(k) for k in important_updates)) \
-            or datetime.datetime.now() - self.publish_backoffs.get(topic, datetime.datetime.min) > datetime.timedelta(seconds=self.config['publish_backoff_seconds']):
-            self.device_states[device] = new_state
-            payload = {"last_update": datetime.datetime.now().isoformat()}
-            payload.update(new_state)
-            print("Publishing for {}: {}".format(device, new_state))
-            payload_str = json.dumps(payload)
-            self.mqtt_client.publish(topic, payload_str)
-            self.publish_backoffs[topic] = datetime.datetime.now()
+        payload = {"last_update": datetime.datetime.now().isoformat()}
+        payload.update(new_state)
+        print("Publishing for {}: {}".format(device, new_state))
+        payload_str = json.dumps(payload)
+        self.mqtt_client.publish(topic, payload_str)
 
     def on_disconnect(self, device_name, client):
         print("Disconnected {}.".format(device_name))
