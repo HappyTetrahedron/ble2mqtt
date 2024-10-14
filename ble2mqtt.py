@@ -65,18 +65,21 @@ class Ble2Mqtt:
             async with BleakClient(device, disconnected_callback=disconnect_cb) as client:
                 print("Connected {}.".format(name))
 
-                while not disconnect_event.is_set():
-                    payload = {}
-                    for uuid, cha in characteristics.items():
-                        result = await client.read_gatt_char(uuid)
-                        if self.config['debug']:
-                            print("{} {}: {} {}".format(name, cha["name"], convert(cha["format"], result), cha["unit"]))
-                        payload.update({
-                            "state": "connected",
-                            cha["name"]: convert(cha["format"], result),
-                        })
-                    self.send_mqtt(name, payload)
-                    await asyncio.sleep(self.config['read_interval_seconds'])
+                try:
+                    while not disconnect_event.is_set():
+                        payload = {}
+                        for uuid, cha in characteristics.items():
+                            result = await client.read_gatt_char(uuid)
+                            if self.config['debug']:
+                                print("{} {}: {} {}".format(name, cha["name"], convert(cha["format"], result), cha["unit"]))
+                            payload.update({
+                                "state": "connected",
+                                cha["name"]: convert(cha["format"], result),
+                            })
+                        self.send_mqtt(name, payload)
+                        await asyncio.sleep(self.config['read_interval_seconds'])
+                finally:
+                    client.disconnect()
 
         except Exception as e:
             print("Task {} ended with error:".format(name))
